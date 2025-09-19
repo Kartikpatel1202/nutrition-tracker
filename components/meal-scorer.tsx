@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -8,37 +8,107 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
-import { Calculator, Zap } from "lucide-react"
+import { Calculator, Zap, X } from "lucide-react"
 import { calculateMealScore, getScoreColorScheme, type MealData, type MealScore } from "@/lib/meal-scoring"
+import dishData from "../public/dish-data.json"
+// Type for the nutritional data from the JSON file
+type DishNutrition = {
+  "Calories (kcal)": number
+  "Carbohydrates (g)": number
+  "Protein (g)": number
+  "Fats (g)": number
+  "Free Sugar (g)": number
+  "Fibre (g)": number
+  "Sodium (mg)": number
+  "Calcium (mg)": number
+  "Iron (mg)": number
+  "Vitamin C (mg)": number
+  "Folate (µg)": number
+}
+
+// Type for the dish object
+type Dish = {
+  name: string
+  nutrition: DishNutrition
+}
 
 export function MealScorer() {
-  const [meal, setMeal] = useState<Partial<MealData>>({
-    dish_name: "",
-    meal_type: "lunch",
-    calories: 0,
-    protein: 0,
-    carbohydrates: 0,
-    fats: 0,
-    fibre: 0,
-    sodium: 0,
-    calcium: 0,
-    iron: 0,
-    vitamin_c: 0,
-    folate: 0,
-  })
-
+  const [selectedDishes, setSelectedDishes] = useState<Dish[]>([])
+  const [selectedDishName, setSelectedDishName] = useState<string>("")
+  const [mealType, setMealType] = useState<string>("lunch")
   const [score, setScore] = useState<MealScore | null>(null)
 
-  const handleInputChange = (field: keyof MealData, value: string | number) => {
-    setMeal((prev) => ({
-      ...prev,
-      [field]: typeof value === "string" && field !== "dish_name" && field !== "meal_type" ? Number(value) : value,
-    }))
+  const dishNames = useMemo(() => Object.keys(dishData).sort(), [])
+
+  // Calculate the total nutrients based on selected dishes
+  const totalNutrients = useMemo(() => {
+    const totals: MealData = {
+      dish_name: selectedDishes.map(d => d.name).join(' + '),
+      meal_type: mealType as MealData["meal_type"],
+      calories: 0,
+      protein: 0,
+      carbohydrates: 0,
+      fats: 0,
+      fibre: 0,
+      sodium: 0,
+      calcium: 0,
+      iron: 0,
+      vitamin_c: 0,
+      folate: 0,
+    }
+    
+    selectedDishes.forEach(dish => {
+      totals.calories += dish.nutrition["Calories (kcal)"]
+      totals.protein += dish.nutrition["Protein (g)"]
+      totals.carbohydrates += dish.nutrition["Carbohydrates (g)"]
+      totals.fats += dish.nutrition["Fats (g)"]
+      totals.fibre += dish.nutrition["Fibre (g)"]
+      totals.sodium += dish.nutrition["Sodium (mg)"]
+      totals.calcium += dish.nutrition["Calcium (mg)"]
+      totals.iron += dish.nutrition["Iron (mg)"]
+      totals.vitamin_c += dish.nutrition["Vitamin C (mg)"]
+      totals.folate += dish.nutrition["Folate (µg)"]
+    })
+
+    return totals
+  }, [selectedDishes, mealType])
+
+  const handleAddDish = () => {
+    if (selectedDishName) {
+      const dishNutrition = dishData[selectedDishName as keyof typeof dishData] as DishNutrition
+      setSelectedDishes(prev => [
+        ...prev,
+        {
+          name: selectedDishName,
+          nutrition: dishNutrition
+        }
+      ])
+      // Reset selected dish name for next selection
+      setSelectedDishName("")
+    }
+  }
+
+  const handleRemoveDish = (index: number) => {
+    setSelectedDishes(prev => prev.filter((_, i) => i !== index))
   }
 
   const calculateScore = () => {
-    if (meal.dish_name && meal.calories && meal.calories > 0) {
-      const mealScore = calculateMealScore(meal as MealData)
+    if (selectedDishes.length > 0) {
+      // Round the totals before calculating score
+      const roundedTotals: MealData = {
+        ...totalNutrients,
+        calories: Number(totalNutrients.calories.toFixed(3)),
+        protein: Number(totalNutrients.protein.toFixed(3)),
+        carbohydrates: Number(totalNutrients.carbohydrates.toFixed(3)),
+        fats: Number(totalNutrients.fats.toFixed(3)),
+        fibre: Number(totalNutrients.fibre.toFixed(3)),
+        sodium: Number(totalNutrients.sodium.toFixed(3)),
+        calcium: Number(totalNutrients.calcium.toFixed(3)),
+        iron: Number(totalNutrients.iron.toFixed(3)),
+        vitamin_c: Number(totalNutrients.vitamin_c.toFixed(3)),
+        folate: Number(totalNutrients.folate.toFixed(3))
+      }
+      const mealScore = calculateMealScore(roundedTotals as MealData)
       setScore(mealScore)
     }
   }
@@ -54,23 +124,50 @@ export function MealScorer() {
             <Calculator className="h-5 w-5" />
             Meal Scorer
           </CardTitle>
-          <CardDescription>Enter meal details to get a comprehensive suitability score</CardDescription>
+          <CardDescription>Select dishes to get a comprehensive suitability score</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="dish-select">Select Dish</Label>
+            <div className="flex items-center space-x-2">
+              <Select value={selectedDishName} onValueChange={setSelectedDishName}>
+                <SelectTrigger id="dish-select" className="flex-1">
+                  <SelectValue placeholder="Select a dish" />
+                </SelectTrigger>
+                <SelectContent>
+                  {dishNames.map((dishName) => (
+                    <SelectItem key={dishName} value={dishName}>
+                      {dishName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button onClick={handleAddDish} disabled={!selectedDishName}>
+                Add
+              </Button>
+            </div>
+          </div>
+          
+          {selectedDishes.length > 0 && (
+            <div className="space-y-2">
+              <Label>Selected Dishes</Label>
+              <div className="flex flex-wrap gap-2">
+                {selectedDishes.map((dish, index) => (
+                  <Badge key={index} variant="secondary" className="pl-3 pr-1 py-1 text-sm flex items-center gap-1">
+                    {dish.name}
+                    <button onClick={() => handleRemoveDish(index)} className="ml-1 p-0.5 rounded-full hover:bg-gray-200">
+                      <X className="h-3 w-3 text-gray-500" />
+                    </button>
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
-              <Label htmlFor="dish-name">Dish Name</Label>
-              <Input
-                id="dish-name"
-                placeholder="e.g., Grilled Chicken Salad"
-                value={meal.dish_name}
-                onChange={(e) => handleInputChange("dish_name", e.target.value)}
-              />
-            </div>
-
-            <div className="space-y-2">
               <Label htmlFor="meal-type">Meal Type</Label>
-              <Select value={meal.meal_type} onValueChange={(value) => handleInputChange("meal_type", value)}>
+              <Select value={mealType} onValueChange={setMealType}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -84,13 +181,12 @@ export function MealScorer() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="calories">Calories</Label>
+              <Label htmlFor="calories">Calories (kcal)</Label>
               <Input
                 id="calories"
                 type="number"
-                placeholder="0"
-                value={meal.calories || ""}
-                onChange={(e) => handleInputChange("calories", e.target.value)}
+                value={totalNutrients.calories.toFixed(3)}
+                readOnly
               />
             </div>
 
@@ -99,9 +195,8 @@ export function MealScorer() {
               <Input
                 id="protein"
                 type="number"
-                placeholder="0"
-                value={meal.protein || ""}
-                onChange={(e) => handleInputChange("protein", e.target.value)}
+                value={totalNutrients.protein.toFixed(3)}
+                readOnly
               />
             </div>
 
@@ -110,9 +205,8 @@ export function MealScorer() {
               <Input
                 id="carbohydrates"
                 type="number"
-                placeholder="0"
-                value={meal.carbohydrates || ""}
-                onChange={(e) => handleInputChange("carbohydrates", e.target.value)}
+                value={totalNutrients.carbohydrates.toFixed(3)}
+                readOnly
               />
             </div>
 
@@ -121,9 +215,8 @@ export function MealScorer() {
               <Input
                 id="fats"
                 type="number"
-                placeholder="0"
-                value={meal.fats || ""}
-                onChange={(e) => handleInputChange("fats", e.target.value)}
+                value={totalNutrients.fats.toFixed(3)}
+                readOnly
               />
             </div>
 
@@ -132,9 +225,8 @@ export function MealScorer() {
               <Input
                 id="fibre"
                 type="number"
-                placeholder="0"
-                value={meal.fibre || ""}
-                onChange={(e) => handleInputChange("fibre", e.target.value)}
+                value={totalNutrients.fibre.toFixed(3)}
+                readOnly
               />
             </div>
 
@@ -143,14 +235,13 @@ export function MealScorer() {
               <Input
                 id="sodium"
                 type="number"
-                placeholder="0"
-                value={meal.sodium || ""}
-                onChange={(e) => handleInputChange("sodium", e.target.value)}
+                value={totalNutrients.sodium.toFixed(3)}
+                readOnly
               />
             </div>
           </div>
 
-          <Button onClick={calculateScore} className="w-full" disabled={!meal.dish_name || !meal.calories}>
+          <Button onClick={calculateScore} className="w-full" disabled={selectedDishes.length === 0}>
             <Zap className="h-4 w-4 mr-2" />
             Calculate Score
           </Button>
@@ -165,7 +256,9 @@ export function MealScorer() {
               <span>Meal Score Results</span>
               <Badge className={`text-lg font-bold ${colorScheme.textColor} bg-white/80`}>{score.grade}</Badge>
             </CardTitle>
-            <CardDescription className={colorScheme.textColor}>{meal.dish_name}</CardDescription>
+            <CardDescription className={colorScheme.textColor}>
+              {selectedDishes.map(d => d.name).join(' + ')}
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
@@ -213,6 +306,7 @@ export function MealScorer() {
                       <div className="w-1.5 h-1.5 bg-orange-500 rounded-full mt-2 flex-shrink-0" />
                       {improvement}
                     </li>
+                    
                   ))}
                 </ul>
               </div>
