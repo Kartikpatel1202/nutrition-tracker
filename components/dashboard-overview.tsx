@@ -3,6 +3,8 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { TrendingUp, Zap, Heart, Shield } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { Button } from "@/components/ui/button"
 
 interface NutritionData {
   calories: number
@@ -16,6 +18,7 @@ interface DashboardOverviewProps {
 }
 
 export function DashboardOverview({ nutritionData }: DashboardOverviewProps) {
+  const router = useRouter()
   // Calculate averages
   const avgCalories =
     nutritionData.length > 0
@@ -73,26 +76,36 @@ export function DashboardOverview({ nutritionData }: DashboardOverviewProps) {
   ]
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-      {overviewCards.map((card, index) => (
-        <Card key={index} className={`${card.bgColor} border-0 shadow-lg hover:shadow-xl transition-all duration-300`}>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-gray-700">{card.title}</CardTitle>
-            <div className={`p-2 rounded-lg bg-gradient-to-r ${card.color}`}>
-              <card.icon className="h-4 w-4 text-white" />
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-gray-900">{card.value}</div>
-            <div className="flex items-center space-x-1 text-xs text-muted-foreground">
-              <Badge variant="secondary" className="text-xs">
-                {card.change}
-              </Badge>
-              <span>from last week</span>
-            </div>
-          </CardContent>
-        </Card>
-      ))}
+    <div>
+      <div className="flex justify-end mb-4">
+        <Button
+          variant="default"
+          onClick={() => router.push("/admin")}
+        >
+          Update Meal Details
+        </Button>
+      </div>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {overviewCards.map((card, index) => (
+          <Card key={index} className={`${card.bgColor} border-0 shadow-lg hover:shadow-xl transition-all duration-300`}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-gray-700">{card.title}</CardTitle>
+              <div className={`p-2 rounded-lg bg-gradient-to-r ${card.color}`}>
+                <card.icon className="h-4 w-4 text-white" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-gray-900">{card.value}</div>
+              <div className="flex items-center space-x-1 text-xs text-muted-foreground">
+                <Badge variant="secondary" className="text-xs">
+                  {card.change}
+                </Badge>
+                <span>from last week</span>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
     </div>
   )
 }
