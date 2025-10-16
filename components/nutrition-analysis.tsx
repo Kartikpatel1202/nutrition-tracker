@@ -8,6 +8,25 @@ import { Button } from "@/components/ui/button"
 import { Calculator, TrendingUp, TrendingDown, AlertTriangle, CheckCircle, RefreshCw } from "lucide-react"
 import { getNutritionGrade, type NutrientAnalysis } from "@/lib/nutrient-calculator"
 
+// Dummy/sample analysis data for UI/demo purposes
+const sampleAnalysis: NutrientAnalysis = {
+  overallScore: 78,
+  percentages: {
+    protein: 92,
+    carbs: 110,
+    fat: 75,
+    fiber: 60,
+    vitaminC: 140,
+    calcium: 85,
+    iron: 70,
+  },
+  recommendations: [
+    "Increase fiber by adding more whole grains and vegetables.",
+    "Reduce saturated fat intake; opt for lean proteins and healthy oils.",
+    "Add iron-rich foods such as lentils, spinach, and lean red meat.",
+  ],
+}
+
 interface NutritionAnalysisProps {
   userProfile?: {
     age: number
@@ -19,7 +38,7 @@ interface NutritionAnalysisProps {
 }
 
 export function NutritionAnalysis({ userProfile }: NutritionAnalysisProps) {
-  const [analysis, setAnalysis] = useState<NutrientAnalysis | null>(null)
+  const [analysis, setAnalysis] = useState<NutrientAnalysis | null>(sampleAnalysis)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -68,7 +87,9 @@ export function NutritionAnalysis({ userProfile }: NutritionAnalysisProps) {
   }
 
   useEffect(() => {
-    analyzeNutrition()
+    if (userProfile) {
+      analyzeNutrition()
+    }
   }, [])
 
   if (loading) {
